@@ -24,6 +24,9 @@ on:
       extractor_sha256:
         required: true
         type: string
+      source_repository:
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -47,6 +50,9 @@ jobs:
 
       - name: Install ripgrep
         run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      - name: Install extractor runtime dependencies
+        run: npm install --no-save web-tree-sitter tree-sitter-wasms
 
       - name: Download extractor
         run: |
@@ -83,4 +89,5 @@ jobs:
             --pr="${{ inputs.pr_number }}" \
             --diff-file=pr.diff \
             --callback="${{ inputs.callback_url }}" \
-            --token="${{ inputs.auth_token }}"
+            --token="${{ inputs.auth_token }}" \
+            --source-repo="${{ inputs.source_repository || github.repository }}"
