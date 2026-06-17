@@ -14,6 +14,10 @@ on:
       diff_url:
         required: true
         type: string
+      pr_title:
+        required: false
+        type: string
+        default: ""
       callback_url:
         required: true
         type: string
@@ -124,6 +128,7 @@ jobs:
           node extractor.mjs \
             --pr="${{ inputs.pr_number }}" \
             --diff-file=pr.diff \
+            --pr-title="${{ inputs.pr_title }}" \
             --callback="${{ inputs.callback_url }}" \
             --token="${{ inputs.auth_token }}" \
             --source-repo="${{ inputs.source_repository || github.repository }}" \
