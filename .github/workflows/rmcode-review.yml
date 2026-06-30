@@ -86,10 +86,12 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           base_sha="${{ inputs.base_sha }}"
+          context_base_sha="$base_sha"
+          diff_file="$RUNNER_TEMP/rmcode-pr.diff"
           if git fetch --no-tags --depth=1 origin "$base_sha" \
             && git fetch --no-tags --depth=1 origin "${{ inputs.head_sha }}" \
             && git checkout --force "$base_sha" \
-            && git diff --no-ext-diff --abbrev=14 "$base_sha" "${{ inputs.head_sha }}" > pr.diff; then
+            && git diff --no-ext-diff --abbrev=14 "$base_sha" "${{ inputs.head_sha }}" > "$diff_file"; then
             echo "Generated diff from git objects."
           else
             echo "Git object diff unavailable; falling back to GitHub diff API..."
@@ -97,7 +99,7 @@ jobs:
               "${{ inputs.diff_url }}" \
               -H "Authorization: token $GITHUB_TOKEN" \
               -H "Accept: application/vnd.github.v3.diff" \
-              --output pr.diff
+              --output "$diff_file"
           fi
           if [ -n "${{ inputs.source_repository }}" ] && [ "${{ inputs.source_repository }}" != "${{ github.repository }}" ]; then
             source_pr="$(python3 -c 'import os, re; repo = os.environ.get("GITHUB_REPOSITORY", ""); match = re.search(r"__PR(\d+)__", repo); print(match.group(1) if match else "")')"
@@ -110,13 +112,15 @@ jobs:
                   | python3 -c 'import json, sys; print(json.load(sys.stdin)["base"]["sha"])')" \
                 && git fetch --no-tags --depth=1 origin "$source_base_sha" \
                 && git checkout --force "$source_base_sha"; then
+                context_base_sha="$source_base_sha"
                 echo "Checked out source benchmark base for context extraction."
               else
                 echo "Could not prepare source benchmark checkout; using dispatched base checkout."
               fi
             fi
           fi
-          echo "Diff size: $(wc -c < pr.diff) bytes"
+          echo "Diff size: $(wc -c < "$diff_file") bytes"
+          echo "RMCODE_CONTEXT_BASE_SHA=$context_base_sha" >> "$GITHUB_ENV"
 
       - name: Extract context and send to API
         env:
@@ -127,7 +131,8 @@ jobs:
           export RMCODE_WORKFLOW_SHA256="$(sha256sum .github/workflows/rmcode-review.yml | awk '{print $1}')"
           node extractor.mjs \
             --pr="${{ inputs.pr_number }}" \
-            --diff-file=pr.diff \
+            --diff-file="$RUNNER_TEMP/rmcode-pr.diff" \
+            --base-sha="$RMCODE_CONTEXT_BASE_SHA" \
             --pr-title="${{ inputs.pr_title }}" \
             --callback="${{ inputs.callback_url }}" \
             --token="${{ inputs.auth_token }}" \
