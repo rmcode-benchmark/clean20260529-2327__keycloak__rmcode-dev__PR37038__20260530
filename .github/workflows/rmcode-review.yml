@@ -52,7 +52,7 @@ jobs:
         run: |
           echo "::add-mask::${{ inputs.auth_token }}"
           echo "::add-mask::${{ inputs.callback_url }}"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.base_sha }}
           fetch-depth: 1
